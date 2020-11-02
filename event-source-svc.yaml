@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: github-event-source-eventsource-svc
+  namespace: argo-events
+spec:
+  selector:
+    eventsource-name: github-event-source
+  ports:
+  - port: 12000
+    targetPort: 12000
+  type: LoadBalancer  

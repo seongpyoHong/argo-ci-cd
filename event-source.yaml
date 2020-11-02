@@ -11,7 +11,7 @@ spec:
       # owner of the repo
       owner: seongpyoHong
       # repository name
-      repository: seereal-deploy
+      repository: argo-ci-cd
       # Github will send events to following port and endpoint
       webhook:
         # endpoint to listen to events on
