@@ -4,4 +4,4 @@ metadata:
   name: github-access
 type: Opaque
 data:
-token: <base64-encoded-api-token>
+  token: <base64-encoded-api-token>
