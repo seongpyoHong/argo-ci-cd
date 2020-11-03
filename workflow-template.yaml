@@ -1,15 +1,145 @@
-# apiVersion: argoproj.io/v1alpha1
-# kind: WorkflowTemplate
-# metadata:
-#   name: workflow-template-whalesay-template
-# spec:
-#   entrypoint: whalesay-template
-#   templates:
-#   - name: whalesay-template
-#     inputs:
-#       parameters:
-#       - name: message
-#     container:
-#       image: docker/whalesay
-#       command: [cowsay]
-#       args: ["{{inputs.parameters.message}}"]
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: ci-workflow
+  namespace: argo
+spec:
+  templates:
+  - name: git-checkout-private
+    inputs:
+      parameters:
+        - name: repo
+        - name: revision
+        - name: sshsecret
+        - name: sshsecretkey
+      artifacts:
+        - name: source
+          path: /src
+          git:
+            repo: ""
+            revision: ""
+            sshPrivateKeySecret:
+              name: ""
+              key: ""
+    container:
+      image: alpine/git
+      command: [sh, -c]
+      args: ["cd /src && git status && ls -l"]
+    outputs:
+      artifacts:
+        - name: source
+          path: /src
+
+  - name: build-and-push
+    inputs:
+      artifacts:
+        - name: source
+          path: /workspace
+      parameters:
+        - name: pathToDockerFile
+        - name: imageUrl
+        - name: imageTag
+        - name: pathToContext
+    container:
+      image: gcr.io/kaniko-project/executor:latest
+      args: ["--dockerfile","","--destination",":","--context","","--build-arg","PRODUCT_VERSION="]
+      env:
+        - name: "GOOGLE_APPLICATION_CREDENTIALS"
+          value: "/secret/google.json"
+      volumeMounts:
+        - name: gcr-creds
+          mountPath: "/secret"
+    activeDeadlineSeconds: 60
+
+  - name: git-new-branch
+    inputs:
+      parameters:
+        - name: release
+        - name: repo
+    outputs:
+      artifacts:
+        - name: source
+          path: /git
+    container:
+      image: alpine/git
+      command: ["/bin/sh", "-c"]
+      args: ["git clone  /git && git checkout -b -update"]
+      volumeMounts:
+        - mountPath: "/opt/ssh"
+          name: ssh-deploy-creds
+    activeDeadlineSeconds: 60
+
+  - name: git-commit
+    inputs:
+      parameters:
+        - name: release
+        - name: author
+        - name: email
+      artifacts:
+        - name: source
+          path: /git
+    outputs:
+      artifacts:
+        - name: source
+          path: /git
+    container:
+      image: gcr.io/arctiqteam-images/git:v2.0.4
+      command: ["/bin/sh", "-c"]
+      args: ["git add * && git commit -m 'change to image -update' && git push --set-upstream origin -update"]
+      env:
+        - name: "GIT_AUTHOR_NAME"
+          value: ""
+        - name: "GIT_AUTHOR_EMAIL"
+          value: ""
+        - name: "GIT_COMMITTER_NAME"
+          value: ""
+        - name: "GIT_COMMITTER_EMAIL"
+          value: ""
+      volumeMounts:
+        - mountPath: "/opt/ssh"
+          name: ssh-deploy-creds
+    activeDeadlineSeconds: 60
+
+  - name: kustomize-image
+    inputs:
+      parameters:
+        - name: release
+        - name: imageUrl
+      artifacts:
+        - name: source
+          path: /git
+    outputs:
+      artifacts:
+        - name: source
+          path: /git
+    container:
+      image: gcr.io/arctiqteam-images/kustomizer:v3.3.0
+      args:
+        - edit
+        - set
+        - image
+        - ":"
+      workingDir: /git
+    activeDeadlineSeconds: 60
+
+  - name: git-pr
+    inputs:
+      artifacts:
+        - name: source
+          path: /git
+    container:
+      image: gcr.io/arctiqteam-images/git:v2.0.4
+      command: ["/bin/sh", "-c"]
+      args: ["hub pull-request --no-edit"]
+      env:
+        - name: GITHUB_USER
+          valueFrom:
+            secretKeyRef:
+              name: github-access
+              key: username
+        - name: GITHUB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: github-access
+              key: token
+    activeDeadlineSeconds: 60
