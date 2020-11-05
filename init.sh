@@ -1,6 +1,6 @@
 #!/bin/bash
 
-GCR_PATH=/Users/seongpyo/workspace/settings/credentials
+GCR_PATH={GCR_PATH}
 # Create Namespace
 kubectl create ns argo
 kubectl create ns argo-events
@@ -20,7 +20,7 @@ kubectl apply -f secret/github-access-argo-event.yaml
 kubectl apply -f secret/github-access-argo-workflow.yaml
 
 ## GCR Credentials
-kubectl create secret generic argo-gcr --namespace=argo --from-file=${GCR_PATH}/elasticsearch-helm-chart.json
+kubectl create secret generic argo-gcp --namespace=argo --from-file=${GCR_PATH}/google.json
 
 # Set Cluster Role & Cluster Role Binding
 kubectl apply -f argo-clusterrole.yaml
@@ -41,6 +41,3 @@ kubectl apply -f event-sensor.yaml
 
 # Deploy Workflow template
 kubectl apply -f workflow-template.yaml
-
-# Print TODO List
-echo -n "Create secret gcp credentials"

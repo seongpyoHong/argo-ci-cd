@@ -59,6 +59,15 @@ spec:
                             - name: revision
                               value: <branch for checkout>
 
+                      - - name: run-test
+                          templateRef:
+                            name: ci-workflow
+                            template: run-test
+                          arguments:
+                            artifacts:
+                            - name: source
+                              from: "{{steps.git-checkout.outputs.artifacts.source}}"
+
                       - - name: build-and-push
                           templateRef:
                             name: ci-workflow
@@ -66,7 +75,7 @@ spec:
                           arguments:
                             artifacts:
                             - name: source
-                              from: "{{steps.git-checkout.outputs.artifacts.source}}"
+                              from: "{{steps.run-test.outputs.artifacts.source}}"
                             parameters:
                               - name: imageUrl
                                 value: <Image Url>
@@ -109,9 +118,9 @@ spec:
                               - name: release
                                 value: "{{steps.git-checkout.outputs.parameters.tag}}"
                               - name: author
-                                value: "{{parameters.author}}"
+                                value: "{{workflow.parameters.author}}"
                               - name: email
-                                value: "{{parameters.email}}"
+                                value: "{{workflow.parameters.email}}"
                       - - name: git-pr
                           templateRef:
                             name: ci-workflow

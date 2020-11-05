@@ -31,6 +31,20 @@ spec:
         - name: tag
           valueFrom:
             path: /tmp/git-commit
+            
+  - name: run-test
+    inputs:
+      artifacts:
+      - name: source
+        path: /src
+    container:
+      image: openjdk:8-jdk-alpine
+      command: [sh, -c]
+      args: ["cd /src && ls -a && chmod 755 gradlew && ./gradlew test && ./gradlew clean build"]
+    outputs:
+      artifacts:
+      - name: source
+        path: /src
 
   - name: build-and-push
     inputs:
